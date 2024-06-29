@@ -1,0 +1,91 @@
+name: Lint, Plan & Apply
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: ['**']
+
+jobs:
+  terraform-lint:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: GitHub Checkout
+        uses: actions/checkout@v4
+      - name: Lint Terraform
+        uses: actionshub/terraform-lint@2.0.1
+
+  terraform-plan:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: GitHub Checkout
+        uses: actions/checkout@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.MY_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.MY_AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      - name: Terraform plan
+        uses: dflook/terraform-plan@v1.43.0
+        env:
+          # `GITHUB_TOKEN` is used by the Action to post a comment on the PR. It
+          # should only have access to this repository.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # `TERRAFORM_GITHUB_TOKEN` is used by Terraform to `git clone` modules
+          # sourced from other private repositories. It should have access to
+          # all repositories containing required terraform modules
+          #
+          # Example:
+          # ```
+          # module "terraform_state" {
+          #   source         = "github.com/epgui/infra-module-terraform-state.git//terraform/module"
+          #   providers      = { aws = aws.aws_us_east_1 }
+          #   s3_bucket      = "my-state"
+          #   dynamodb_table = "my_state_locks"
+          # }
+          # ```
+          TERRAFORM_HTTP_CREDENTIALS: |
+            github.com/epgui=oauth2:${{ secrets.MY_TERRAFORM_GITHUB_TOKEN }}
+        with:
+          label: PRODUCTION CHANGES
+          path: ./terraform/production
+          add_github_comment: changes-only
+
+  terraform-apply:
+    runs-on: ubuntu-22.04
+    name: "Apply production infrastructure changes"
+    needs:
+      - terraform-plan
+      - terraform-lint
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: GitHub Checkout
+        uses: actions/checkout@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.MY_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.MY_AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      - name: terraform:prod apply
+        uses: dflook/terraform-apply@v1.43.0
+        env:
+          # `TERRAFORM_GITHUB_TOKEN` is used by Terraform to `git clone` modules
+          # sourced from other private repositories. It should have access to
+          # all repositories containing required terraform modules
+          #
+          # Example:
+          # ```
+          # module "terraform_state" {
+          #   source         = "github.com/epgui/infra-module-terraform-state.git//terraform/module"
+          #   providers      = { aws = aws.aws_us_east_1 }
+          #   s3_bucket      = "my-state"
+          #   dynamodb_table = "my_state_locks"
+          # }
+          # ```
+          TERRAFORM_HTTP_CREDENTIALS: |
+            github.com/teamshares=oauth2:${{ secrets.MY_TERRAFORM_GITHUB_TOKEN }}
+        with:
+          path: ./terraform/production
+          auto_approve: true
