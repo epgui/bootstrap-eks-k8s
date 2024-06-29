@@ -51,11 +51,11 @@ module "terraform_state" {
 # Note EKS requirements for VPC and Subnets:
 # - https://docs.aws.amazon.com/eks/latest/userguide/network_reqs.html
 module "my_vpc" {
-  source                  = "../modules/vpc"
-  providers               = { aws = aws.aws_us_east_1 }
-  eks_cluster_name        = local.eks_cluster_name
-  environment             = local.environment
-  vpc_name                = "My VPC"
+  source           = "../modules/vpc"
+  providers        = { aws = aws.aws_us_east_1 }
+  eks_cluster_name = local.eks_cluster_name
+  environment      = local.environment
+  vpc_name         = "My VPC"
 }
 
 # References
