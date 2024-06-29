@@ -8,6 +8,20 @@ data "aws_subnet" "eks_cluster_nat_gateway" {
     name   = "tag:HasEksNatGateway"
     values = ["True"]
   }
+  depends_on = [
+    aws_subnet.us_east_1a_private,
+    aws_subnet.us_east_1b_private,
+    aws_subnet.us_east_1c_private,
+    aws_subnet.us_east_1d_private,
+    aws_subnet.us_east_1e_private,
+    aws_subnet.us_east_1f_private,
+    aws_subnet.us_east_1a_public,
+    aws_subnet.us_east_1b_public,
+    aws_subnet.us_east_1c_public,
+    aws_subnet.us_east_1d_public,
+    aws_subnet.us_east_1e_public,
+    aws_subnet.us_east_1f_public,
+  ]
 }
 
 # Pricing: https://aws.amazon.com/vpc/pricing/
